@@ -1,7 +1,7 @@
 {
   "name": "obsidian-calendar",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@vercel/kv": "^2.0.0",
+    "@upstash/redis": "^1.34.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
