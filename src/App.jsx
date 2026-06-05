@@ -458,75 +458,162 @@ function UpcomingList({events,onEventClick}){
 // ─────────────────────────────────────────────
 // SETTINGS MODAL
 // ─────────────────────────────────────────────
-function SettingsModal({uid,syncStatus,onClose}){
-  const[copied,setCopied]=useState(false);
-
-  const copy=()=>{
-    navigator.clipboard?.writeText(uid).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2500);});
-  };
+function SettingsModal({uid,syncStatus,events,onImport,onClose}){
+  const[copiedUID,  setCopiedUID]  = useState(false);
+  const[copiedEvts, setCopiedEvts] = useState(false);
+  const[importText, setImportText] = useState("");
+  const[importMsg,  setImportMsg]  = useState(null); // {ok,text}
+  const[showImport, setShowImport] = useState(false);
 
   const SYNC_MSG={
     synced:  {c:"#3DBA7E", t:"Synced to cloud — your events are safe."},
     syncing: {c:"#F7A45A", t:"Syncing…"},
-    error:   {c:"#FF6060", t:"Sync failed — changes saved locally. Check internet."},
+    error:   {c:"#FF6060", t:"Sync failed — changes saved locally."},
     idle:    {c:"#484848", t:"Not synced yet."},
   };
   const sm=SYNC_MSG[syncStatus]||SYNC_MSG.idle;
 
+  const copyUID=()=>{
+    navigator.clipboard?.writeText(uid);
+    setCopiedUID(true); setTimeout(()=>setCopiedUID(false),2500);
+  };
+
+  const copyForClaude=()=>{
+    const now=new Date();
+    const text=
+      `OBSIDIAN CALENDAR — ${now.toDateString()}\n`+
+      `──────────────────────────────\n`+
+      `EVENTS_START\n`+
+      JSON.stringify(events,null,2)+
+      `\nEVENTS_END`;
+    navigator.clipboard?.writeText(text);
+    setCopiedEvts(true); setTimeout(()=>setCopiedEvts(false),3000);
+  };
+
+  const applyImport=()=>{
+    try {
+      const text=importText.trim();
+      // Try marked block first
+      const marked=text.match(/EVENTS_START\s*([\s\S]*?)\s*EVENTS_END/);
+      // Fall back to any JSON array
+      const arr=text.match(/\[[\s\S]*\]/);
+      const raw=marked?marked[1]:arr?arr[0]:null;
+      if (!raw) throw new Error("no data");
+      const parsed=JSON.parse(raw);
+      if (!Array.isArray(parsed)) throw new Error("not array");
+      onImport(parsed);
+      setImportText("");
+      setShowImport(false);
+      setImportMsg({ok:true, text:`✓ ${parsed.length} events imported and synced.`});
+      setTimeout(()=>setImportMsg(null),4000);
+    } catch {
+      setImportMsg({ok:false, text:"Couldn't read the data. Paste Claude's full reply including the EVENTS_START / EVENTS_END markers."});
+      setTimeout(()=>setImportMsg(null),5000);
+    }
+  };
+
   return(
     <div className="fade" style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",zIndex:300,display:"flex",alignItems:"flex-end"}}
       onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="sheet" style={{width:"100%",maxHeight:"90vh",background:"#0F0F0F",borderRadius:"22px 22px 0 0",overflowY:"auto",padding:"14px 20px",paddingBottom:"max(48px,env(safe-area-inset-bottom,48px))"}}>
+      <div className="sheet" style={{width:"100%",maxHeight:"92vh",background:"#0F0F0F",borderRadius:"22px 22px 0 0",overflowY:"auto",padding:"14px 20px",paddingBottom:"max(48px,env(safe-area-inset-bottom,48px))"}}>
         <div style={{width:34,height:4,borderRadius:2,background:"#282828",margin:"0 auto 14px"}}/>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <span style={{fontFamily:"Syne,sans-serif",fontWeight:800,fontSize:18,color:"#F0F0F0"}}>Settings</span>
           <button className="tap" onClick={onClose} style={{background:"none",border:"none",color:"#484848",fontSize:26,cursor:"pointer",lineHeight:1}}>×</button>
         </div>
 
-        {/* Sync status */}
-        <div style={{...S.label}}>Cloud Sync</div>
-        <div style={{background:"#141414",border:"1px solid #1F1F1F",borderRadius:14,padding:"14px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:12}}>
+        {/* ── Cloud Sync ── */}
+        <div style={S.label}>Cloud Sync</div>
+        <div style={{background:"#141414",border:"1px solid #1F1F1F",borderRadius:14,padding:"12px 16px",marginBottom:18,display:"flex",alignItems:"center",gap:12}}>
           <div style={{width:8,height:8,borderRadius:"50%",background:sm.c,flexShrink:0}}/>
           <span style={{color:"#888",fontSize:13,fontFamily:"DM Sans,sans-serif"}}>{sm.t}</span>
         </div>
 
-        {/* UID */}
-        <div style={{...S.label}}>Your User ID</div>
-        <div style={{background:"#141414",border:"1px solid #1F1F1F",borderRadius:14,padding:"14px 16px",marginBottom:6}}>
-          <div style={{color:"#888",fontSize:11,fontFamily:"DM Sans,sans-serif",marginBottom:8,lineHeight:1.5}}>
-            Share this ID with Claude so it can read and edit your calendar. Also needed for the Scriptable widget.
+        {/* ── Talk to Claude ── */}
+        <div style={S.label}>Talk to Claude</div>
+        <div style={{background:"#141414",border:"1px solid #1F1F1F",borderRadius:14,padding:"14px 16px",marginBottom:10}}>
+          {/* Step 1 */}
+          <div style={{color:"#555",fontSize:11,fontFamily:"DM Sans,sans-serif",marginBottom:10,lineHeight:1.6}}>
+            <span style={{color:"#7C6AF7",fontWeight:700}}>Step 1 —</span> Copy your events and paste them in Claude.
           </div>
+          <button className="tap" onClick={copyForClaude} style={{
+            width:"100%",padding:"12px",borderRadius:12,border:"none",cursor:"pointer",
+            background:copiedEvts?"rgba(61,186,126,0.15)":"rgba(124,106,247,0.18)",
+            color:copiedEvts?"#3DBA7E":"#A898FF",
+            fontSize:13,fontWeight:700,fontFamily:"Syne,sans-serif",letterSpacing:0.3,
+            transition:"all 0.2s",marginBottom:14,
+          }}>
+            {copiedEvts?"✓ Copied — paste in Claude":"Copy events for Claude"}
+          </button>
+
+          {/* Step 2 */}
+          <div style={{color:"#555",fontSize:11,fontFamily:"DM Sans,sans-serif",marginBottom:10,lineHeight:1.6}}>
+            <span style={{color:"#7C6AF7",fontWeight:700}}>Step 2 —</span> Ask Claude anything. When it makes changes it will give you updated data to paste back.
+          </div>
+
+          {/* Step 3 */}
+          <div style={{color:"#555",fontSize:11,fontFamily:"DM Sans,sans-serif",marginBottom:10,lineHeight:1.6}}>
+            <span style={{color:"#7C6AF7",fontWeight:700}}>Step 3 —</span> Paste Claude's response here.
+          </div>
+          <button className="tap" onClick={()=>setShowImport(p=>!p)} style={{
+            width:"100%",padding:"11px",borderRadius:12,
+            border:"1px solid #2A2A2A",background:"transparent",
+            color:"#555",fontSize:13,fontWeight:700,fontFamily:"Syne,sans-serif",
+            cursor:"pointer",letterSpacing:0.3,
+          }}>
+            {showImport?"▲ Close":"▼ Import Claude's changes"}
+          </button>
+
+          {showImport&&(
+            <div style={{marginTop:10}}>
+              <textarea
+                value={importText}
+                onChange={e=>setImportText(e.target.value)}
+                placeholder="Paste Claude's full reply here…"
+                rows={5}
+                style={{...S.input,marginBottom:8,fontSize:12,color:"#A0A0A0",lineHeight:1.5}}
+              />
+              <button className="tap" onClick={applyImport} disabled={!importText.trim()} style={{
+                width:"100%",padding:"12px",borderRadius:12,border:"none",cursor:"pointer",
+                background:importText.trim()?"#7C6AF7":"#1A1A1A",
+                color:importText.trim()?"#fff":"#333",
+                fontSize:13,fontWeight:700,fontFamily:"Syne,sans-serif",transition:"all 0.2s",
+              }}>Apply changes</button>
+            </div>
+          )}
+        </div>
+
+        {/* Feedback message */}
+        {importMsg&&(
+          <div style={{padding:"10px 14px",borderRadius:10,marginBottom:10,background:importMsg.ok?"rgba(61,186,126,0.1)":"rgba(255,96,96,0.1)",border:`1px solid ${importMsg.ok?"#3DBA7E44":"#FF606044"}`}}>
+            <span style={{color:importMsg.ok?"#3DBA7E":"#FF6060",fontSize:12,fontFamily:"DM Sans,sans-serif"}}>{importMsg.text}</span>
+          </div>
+        )}
+
+        {/* ── Scriptable UID ── */}
+        <div style={{...S.label,marginTop:8}}>Scriptable Widget ID</div>
+        <div style={{background:"#141414",border:"1px solid #1F1F1F",borderRadius:14,padding:"12px 14px",marginBottom:18}}>
+          <div style={{color:"#555",fontSize:11,fontFamily:"DM Sans,sans-serif",marginBottom:8}}>Paste this in the Scriptable widget script.</div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <code style={{flex:1,fontSize:11,color:"#7C6AF7",fontFamily:"monospace",wordBreak:"break-all",background:"#0A0A0A",padding:"8px 10px",borderRadius:8,border:"1px solid #242424"}}>{uid}</code>
-            <button className="tap" onClick={copy} style={{padding:"8px 14px",background:copied?"rgba(61,186,126,0.15)":"rgba(124,106,247,0.15)",border:`1px solid ${copied?"#3DBA7E":"#7C6AF7"}`,borderRadius:10,color:copied?"#3DBA7E":"#7C6AF7",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Syne,sans-serif",flexShrink:0,whiteSpace:"nowrap"}}>
-              {copied?"✓ Copied":"Copy"}
+            <code style={{flex:1,fontSize:10,color:"#7C6AF7",fontFamily:"monospace",wordBreak:"break-all",background:"#0A0A0A",padding:"7px 10px",borderRadius:8,border:"1px solid #242424"}}>{uid}</code>
+            <button className="tap" onClick={copyUID} style={{padding:"7px 12px",background:copiedUID?"rgba(61,186,126,0.15)":"rgba(124,106,247,0.12)",border:`1px solid ${copiedUID?"#3DBA7E":"#7C6AF7"}`,borderRadius:10,color:copiedUID?"#3DBA7E":"#7C6AF7",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Syne,sans-serif",flexShrink:0}}>
+              {copiedUID?"✓":"Copy"}
             </button>
           </div>
         </div>
-        <div style={{color:"#303030",fontSize:11,fontFamily:"DM Sans,sans-serif",marginBottom:20,paddingLeft:4,lineHeight:1.5}}>
-          Treat this like a password — don't share it publicly.
-        </div>
 
-        {/* Categories legend */}
-        <div style={{...S.label}}>Categories</div>
-        <div style={{background:"#141414",border:"1px solid #1F1F1F",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
-          {Object.entries(CATS).map(([cat,{color,dim}])=>(
-            <div key={cat} style={{display:"flex",alignItems:"center",gap:12,marginBottom:12,":last-child":{marginBottom:0}}}>
-              <div style={{width:10,height:10,borderRadius:"50%",background:color,flexShrink:0}}/>
-              <span style={{color:"#CECECE",fontSize:14,fontFamily:"DM Sans,sans-serif",flex:1}}>{cat}</span>
-              <div style={{width:50,height:4,borderRadius:2,background:color+"33"}}/>
+        {/* ── Categories ── */}
+        <div style={S.label}>Categories</div>
+        <div style={{background:"#141414",border:"1px solid #1F1F1F",borderRadius:14,padding:"12px 16px"}}>
+          {Object.entries(CATS).map(([cat,{color}])=>(
+            <div key={cat} style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:color,flexShrink:0}}/>
+              <span style={{color:"#CECECE",fontSize:13,fontFamily:"DM Sans,sans-serif",flex:1}}>{cat}</span>
+              <div style={{width:40,height:3,borderRadius:2,background:color+"44"}}/>
             </div>
           ))}
         </div>
 
-        {/* How to use with Claude */}
-        <div style={{...S.label}}>Use With Claude</div>
-        <div style={{background:"#141414",border:"1px solid #1F1F1F",borderRadius:14,padding:"14px 16px",color:"#666",fontSize:12,fontFamily:"DM Sans,sans-serif",lineHeight:1.7}}>
-          1. Copy your User ID above{"\n"}
-          2. Open Claude at claude.ai{"\n"}
-          3. Say: <span style={{color:"#A898FF",fontStyle:"italic"}}>"My calendar UID is [paste here]"</span>{"\n"}
-          4. Claude can now read, add, and edit your events
-        </div>
       </div>
     </div>
   );
@@ -594,6 +681,8 @@ export default function App(){
   },[]);
 
   const del=useCallback(id=>{ setEvents(p=>p.filter(e=>e.id!==id)); setEvtModal(null); },[]);
+
+  const handleImport=useCallback(imported=>{ setEvents(imported); },[]);
 
   const nav=dir=>{
     const d=new Date(date);
@@ -665,7 +754,7 @@ export default function App(){
       {/* Modals */}
       {dayModal&&(<DayModal date={dayModal} events={events} onClose={()=>setDayModal(null)} onEventClick={e=>setEvtModal({event:e})} onAddNew={()=>{setEvtModal({defDate:fmtDate(dayModal)});setDayModal(null);}}/>)}
       {evtModal&&(<EventModal event={evtModal.event} defDate={evtModal.defDate} defHour={evtModal.defHour} onSave={save} onDelete={del} onClose={()=>setEvtModal(null)}/>)}
-      {showSett&&(<SettingsModal uid={uid} syncStatus={syncSt} onClose={()=>setShowSett(false)}/>)}
+      {showSett&&(<SettingsModal uid={uid} syncStatus={syncSt} events={events} onImport={handleImport} onClose={()=>setShowSett(false)}/>)}
     </div>
   );
 }
