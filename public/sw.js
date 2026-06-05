@@ -1,4 +1,4 @@
-const CACHE = 'obsidian-v1';
+const CACHE = 'obsidian-v2';
 const PRECACHE = ['/', '/index.html'];
 
 self.addEventListener('install', e => {
