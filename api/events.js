@@ -1,8 +1,8 @@
 import { Redis } from "@upstash/redis";
 
 const redis = new Redis({
-  url:   process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  url:   process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN,
 });
 
 export default async function handler(req, res) {
@@ -11,9 +11,9 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  if (!process.env.UPSTASH_REDIS_REST_URL) {
+  if (!process.env.KV_REST_API_URL) {
     return res.status(503).json({
-      error: "Upstash Redis not connected. Go to Vercel → Storage → Upstash → Connect to project → Redeploy.",
+      error: "Upstash not connected. Go to Vercel → Storage → Connect to project → Redeploy.",
     });
   }
 
