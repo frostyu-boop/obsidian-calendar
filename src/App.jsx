@@ -464,6 +464,15 @@ function SettingsModal({uid,syncStatus,events,onImport,onClose}){
   const[importText, setImportText] = useState("");
   const[importMsg,  setImportMsg]  = useState(null); // {ok,text}
   const[showImport, setShowImport] = useState(false);
+  const[newUID,     setNewUID]     = useState("");
+  const[switchWarn, setSwitchWarn] = useState(false);
+
+  const switchUID = () => {
+    const t = newUID.trim();
+    if (!t || t === uid || t.length < 8 || !/^[a-zA-Z0-9\-_]+$/.test(t)) return;
+    localStorage.setItem(UID_KEY, t);
+    window.location.reload();
+  };
 
   const SYNC_MSG={
     synced:  {c:"#3DBA7E", t:"Synced to cloud — your events are safe."},
@@ -589,6 +598,39 @@ function SettingsModal({uid,syncStatus,events,onImport,onClose}){
             <span style={{color:importMsg.ok?"#3DBA7E":"#FF6060",fontSize:12,fontFamily:"DM Sans,sans-serif"}}>{importMsg.text}</span>
           </div>
         )}
+
+        {/* ── Connect Another Device ── */}
+        <div style={{...S.label,marginTop:8}}>Sync With Another Device</div>
+        <div style={{background:"#141414",border:"1px solid #1F1F1F",borderRadius:14,padding:"14px 16px",marginBottom:10}}>
+          <div style={{color:"#555",fontSize:11,fontFamily:"DM Sans,sans-serif",marginBottom:10,lineHeight:1.6}}>
+            To see this calendar on another device, copy your ID above and paste it there.<br/>
+            To connect this device to a different calendar, paste that device's ID below.
+          </div>
+          <input
+            value={newUID}
+            onChange={e=>{setNewUID(e.target.value);setSwitchWarn(false);}}
+            placeholder="Paste another device's ID…"
+            style={{...S.input,marginBottom:8,fontSize:12}}
+          />
+          {!switchWarn ? (
+            <button className="tap"
+              onClick={()=>{ if(newUID.trim()&&newUID.trim()!==uid) setSwitchWarn(true); }}
+              disabled={!newUID.trim()||newUID.trim()===uid}
+              style={{width:"100%",padding:"10px",borderRadius:10,border:"1px solid #282828",background:"transparent",color:newUID.trim()&&newUID.trim()!==uid?"#A898FF":"#333",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Syne,sans-serif"}}>
+              Switch to this ID
+            </button>
+          ) : (
+            <div>
+              <div style={{color:"#F7A45A",fontSize:11,fontFamily:"DM Sans,sans-serif",marginBottom:8,padding:"8px 10px",background:"rgba(247,164,90,0.08)",borderRadius:8,border:"1px solid rgba(247,164,90,0.2)"}}>
+                ⚠️ This will replace your current calendar with the other device's events. Are you sure?
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button className="tap" onClick={()=>setSwitchWarn(false)} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid #282828",background:"transparent",color:"#666",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"DM Sans,sans-serif"}}>Cancel</button>
+                <button className="tap" onClick={switchUID} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,96,96,0.3)",background:"rgba(255,96,96,0.08)",color:"#FF6060",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"DM Sans,sans-serif"}}>Yes, switch</button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* ── Scriptable UID ── */}
         <div style={{...S.label,marginTop:8}}>Scriptable Widget ID</div>
