@@ -1,88 +1,131 @@
-[README.md](https://github.com/user-attachments/files/28603750/README.md)
-# Obsidian Calendar v2 — Setup Guide
+# Obsidian Calendar
 
-## What's new in v2
-- ☁️ Cloud sync via Vercel KV (your events live in the cloud)
-- 🤖 Claude can read & edit your events directly
-- 📱 Scriptable widget for your iPhone home screen
+A free, minimalist personal calendar that lives on your phone's home screen — no App Store, no account, no ads.
+
+**→ Use it now: [obsidian-calendar.vercel.app](https://obsidian-calendar.vercel.app)**
 
 ---
 
-## Step 1 — Upload to GitHub (replace old files)
+## Features
 
-1. Go to your `obsidian-calendar` repository on GitHub
-2. For each file below, click it → Edit (pencil icon) → paste new content → Commit:
-   - `src/App.jsx`
-   - `package.json`
-3. For the new file `api/events.js`:
-   - Click **Add file → Create new file**
-   - Name: `api/events.js`
-   - Paste the content → Commit
-4. Vercel will auto-redeploy (wait ~30 seconds)
-
----
-
-## Step 2 — Set up Vercel KV (free database)
-
-1. Go to [vercel.com](https://vercel.com) → open your `obsidian-calendar` project
-2. Click the **Storage** tab
-3. Click **Create Database** → choose **KV**
-4. Name it anything (e.g. `calendar-db`) → click **Create & Continue**
-5. On the next screen click **Connect Project** → select `obsidian-calendar` → **Connect**
-6. Go to the **Deployments** tab → click the three dots on the latest deployment → **Redeploy**
-
-That's it — Vercel automatically injects the KV credentials. No API keys to copy.
+- **Month & Week views** with smooth navigation
+- **6 color-coded categories** — Work, Personal, Gym/Sport, Social, Travel, Other
+- **Recurring events** — daily, weekly, monthly, or yearly, with automatic expansion across views
+- **Notifications** — from "at event time" up to 1 day before (fires while the app is open)
+- **Duplicate events** in one tap
+- **All-day events**, location field, and notes
+- **Cloud sync** — your events are saved to the cloud and survive app reinstalls
+- **Multi-device sync** — share your calendar across your phone and computer using a single ID
+- **Offline support** — works without internet, syncs automatically when reconnected
+- **iPhone home screen widget** via the free Scriptable app
+- **AI assistant** — share your calendar with Claude to add, edit, or reschedule events in plain language
 
 ---
 
-## Step 3 — Get your User ID
+## Install on iPhone
 
-1. Open your calendar app in Safari on iPhone
-2. Tap **⚙** (bottom right)
-3. Tap **Copy** next to your User ID
-4. Save it somewhere safe — you'll need it for Claude and for the widget
+> ⚠️ You must use **Safari**. Chrome and other browsers do not support Add to Home Screen on iOS.
 
----
-
-## Step 4 — Let Claude manage your calendar
-
-1. Open [claude.ai](https://claude.ai)
-2. Say: *"My Obsidian Calendar UID is [paste your UID here]"*
-3. Claude will save it and can now:
-   - Read all your events
-   - Add new events
-   - Edit or delete existing ones
-   - Find free time slots
-   - Do anything you'd ask a personal assistant
+1. Open **Safari** and go to [obsidian-calendar.vercel.app](https://obsidian-calendar.vercel.app)
+2. Tap the **Share button** (the square with an arrow, at the bottom of the screen)
+3. Scroll down and tap **"Add to Home Screen"**
+4. Tap **"Add"** in the top right corner
+5. The Obsidian icon appears on your home screen — it opens fullscreen with no browser bar
 
 ---
 
-## Step 5 — Set up the Scriptable widget
+## Install on Android
 
-1. Download **Scriptable** from the App Store (free)
-2. Open Scriptable → tap **+** (top right) → paste the entire content of `scriptable-widget.js`
-3. At the top of the script, fill in:
-   ```
-   const APP_URL = "https://your-app.vercel.app";   // your real Vercel URL
-   const USER_ID = "paste-your-uid-here";            // from Step 3
-   ```
-4. Tap the **Play ▶** button to test — you should see your upcoming events
+1. Open **Chrome** and go to [obsidian-calendar.vercel.app](https://obsidian-calendar.vercel.app)
+2. Tap the **three-dot menu** (top right)
+3. Tap **"Add to Home screen"** or **"Install app"**
+4. Tap **"Add"** or **"Install"** to confirm
+
+Works with Chrome, Samsung Internet, and most modern Android browsers.
+
+---
+
+## Sync Your Calendar Across Devices
+
+Each device gets its own private ID automatically on first launch. To use the same calendar on multiple devices:
+
+1. On your **main device** — open the app → tap **⚙** (bottom right) → copy your **User ID**
+2. On your **other device** — open the app → tap **⚙** → find **"Sync With Another Device"** → paste the ID → tap **Switch to this ID** → confirm
+3. Both devices now share the same calendar and sync in real time
+
+---
+
+## iPhone Home Screen Widget
+
+Show your upcoming events on the home screen using the free **Scriptable** app:
+
+1. Download [Scriptable](https://apps.apple.com/app/scriptable/id1405459188) from the App Store (free)
+2. Open Scriptable → tap **+** (top right) → paste the entire contents of [`scriptable-widget.js`](./scriptable-widget.js)
+3. At the top of the script, fill in your app URL and your User ID (found in ⚙ Settings)
+4. Tap the **▶ Play** button to test — you should see your upcoming events
 5. Name the script (e.g. "Obsidian Calendar") → tap **Done**
-
-**Add widget to home screen:**
-1. Long press your iPhone home screen → tap **+** (top left)
-2. Search for **Scriptable**
-3. Choose **Medium** size → tap **Add Widget**
-4. Long press the new widget → **Edit Widget**
-5. Under Script, select **Obsidian Calendar**
-6. Tap anywhere to save
+6. Long press your home screen → tap **+** → search **Scriptable** → choose **Medium** size → tap **Add Widget**
+7. Long press the new widget → **Edit Widget** → select your script → done
 
 ---
 
-## Privacy notes
+## AI Assistant (Claude)
 
-- Your User ID is your only credential — treat it like a password
-- Vercel KV stores your events as encrypted data at rest
-- Only someone with your UID can read your events
-- To revoke access: go to app ⚙ → generate a new UID (coming in a future update)
-- Vercel KV free tier: 30,000 requests/day — far more than you'll ever use
+Use [Claude](https://claude.ai) as a natural language assistant for your calendar:
+
+1. Open the app → **⚙** → tap **"Copy events for Claude"**
+2. Paste in Claude and ask anything:
+   - *"Add gym on Monday at 7am"*
+   - *"What do I have this week?"*
+   - *"Move my Tuesday meeting to Thursday afternoon"*
+   - *"Find me a free hour on Friday"*
+3. Claude replies with updated events
+4. Go back to the app → **⚙** → **"Import Claude's changes"** → paste the reply → **Apply changes**
+
+---
+
+## Privacy
+
+- Your events are stored under your private User ID in an [Upstash](https://upstash.com) Redis database
+- No one can read your calendar without your ID
+- No accounts, no email address, no tracking, no ads
+- You can switch to a brand new ID at any time to start fresh
+
+---
+
+## Self-Hosting (Deploy Your Own Instance)
+
+Want your own private version? Free, takes about 10 minutes.
+
+### What you need
+- A [GitHub](https://github.com) account (free)
+- A [Vercel](https://vercel.com) account (free)
+
+### Steps
+
+**1 — Fork this repo**
+Click **Fork** at the top right of this page.
+
+**2 — Deploy to Vercel**
+- Go to [vercel.com](https://vercel.com) → **New Project** → import your fork
+- Click **Deploy** (Vercel detects Vite + React automatically)
+- Wait ~30 seconds
+
+**3 — Connect the database**
+- In your Vercel project → **Storage** tab → **Create Database** → choose **Upstash**
+- Name it anything → pick the region closest to you → **Create**
+- Click **Connect Project** → select your repo → **Connect**
+- Go to **Deployments** → three dots on the latest → **Redeploy**
+
+**4 — Install on your phone**
+Follow the iPhone or Android steps above using your new Vercel URL.
+
+### Tech stack
+- **Frontend** — React + Vite
+- **API** — Vercel Serverless Functions
+- **Database** — Upstash Redis (via Vercel integration)
+- **Widget** — Scriptable (iOS)
+
+---
+
+*Open source. Built with React, Vercel, and Upstash.*
