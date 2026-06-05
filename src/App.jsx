@@ -643,7 +643,23 @@ export default function App(){
 
     setSyncSt("syncing");
     apiFetch(uid)
-      .then(apiEvts=>{ setEvents(apiEvts); saveLocal(apiEvts); setSyncSt("synced"); })
+      .then(apiEvts=>{
+        const localEvts = loadLocal();
+        if (apiEvts.length === 0 && localEvts.length > 0) {
+          // Cloud is empty but local has events — push local up, keep local
+          apiPush(uid, localEvts).catch(()=>{});
+          setSyncSt("synced");
+        } else {
+          // Merge: API is source of truth, but keep any local-only events
+          const apiIds = new Set(apiEvts.map(e=>e.id));
+          const onlyLocal = localEvts.filter(e=>!apiIds.has(e.id));
+          const merged = onlyLocal.length > 0 ? [...apiEvts, ...onlyLocal] : apiEvts;
+          if (onlyLocal.length > 0) apiPush(uid, merged).catch(()=>{});
+          setEvents(merged);
+          saveLocal(merged);
+          setSyncSt("synced");
+        }
+      })
       .catch(()=>setSyncSt("error"));
   },[]);
 
