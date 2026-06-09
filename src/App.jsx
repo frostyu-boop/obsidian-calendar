@@ -456,16 +456,78 @@ function UpcomingList({events,onEventClick}){
 }
 
 // ─────────────────────────────────────────────
+// PUSH HELPER
+// ─────────────────────────────────────────────
+function urlBase64ToUint8Array(b64) {
+  const pad = "=".repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+// ─────────────────────────────────────────────
 // SETTINGS MODAL
 // ─────────────────────────────────────────────
 function SettingsModal({uid,syncStatus,events,onImport,onClose}){
   const[copiedUID,  setCopiedUID]  = useState(false);
   const[copiedEvts, setCopiedEvts] = useState(false);
   const[importText, setImportText] = useState("");
-  const[importMsg,  setImportMsg]  = useState(null); // {ok,text}
+  const[importMsg,  setImportMsg]  = useState(null);
   const[showImport, setShowImport] = useState(false);
   const[newUID,     setNewUID]     = useState("");
   const[switchWarn, setSwitchWarn] = useState(false);
+  const[pushSt,     setPushSt]     = useState("idle"); // idle|checking|subscribing|subscribed|denied|error
+  const pushOK = typeof window !== "undefined" &&
+    "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+
+  // Check existing subscription on open
+  useEffect(()=>{
+    if (!pushOK) return;
+    if (Notification.permission === "denied") { setPushSt("denied"); return; }
+    navigator.serviceWorker.ready.then(reg =>
+      reg.pushManager.getSubscription().then(sub => { if (sub) setPushSt("subscribed"); })
+    );
+  },[]);
+
+  const enablePush = async () => {
+    setPushSt("subscribing");
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") { setPushSt("denied"); return; }
+      const reg = await navigator.serviceWorker.ready;
+      const { publicKey } = await fetch("/api/vapid-key").then(r => r.json());
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+      await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid,
+          subscription: sub.toJSON(),
+          timezone: -new Date().getTimezoneOffset(),
+        }),
+      });
+      setPushSt("subscribed");
+    } catch(err) {
+      console.error("Push failed:", err);
+      setPushSt("error");
+    }
+  };
+
+  const disablePush = async () => {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) await sub.unsubscribe();
+      await fetch("/api/subscribe", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid }),
+      });
+      setPushSt("idle");
+    } catch(err) { console.error(err); }
+  };
 
   const switchUID = () => {
     const t = newUID.trim();
@@ -536,6 +598,48 @@ function SettingsModal({uid,syncStatus,events,onImport,onClose}){
         <div style={{background:"#141414",border:"1px solid #1F1F1F",borderRadius:14,padding:"12px 16px",marginBottom:18,display:"flex",alignItems:"center",gap:12}}>
           <div style={{width:8,height:8,borderRadius:"50%",background:sm.c,flexShrink:0}}/>
           <span style={{color:"#888",fontSize:13,fontFamily:"DM Sans,sans-serif"}}>{sm.t}</span>
+        </div>
+
+        {/* ── Notifications ── */}
+        <div style={S.label}>Push Notifications</div>
+        <div style={{background:"#141414",border:"1px solid #1F1F1F",borderRadius:14,padding:"14px 16px",marginBottom:10}}>
+          {!pushOK ? (
+            <div style={{color:"#555",fontSize:12,fontFamily:"DM Sans,sans-serif",lineHeight:1.6}}>
+              Not supported here. Open the app from your <strong style={{color:"#888"}}>home screen icon</strong> on iOS 16.4+ or Chrome on Android.
+            </div>
+          ) : pushSt === "subscribed" ? (
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:"#3DBA7E"}}/>
+                <span style={{color:"#3DBA7E",fontSize:13,fontFamily:"DM Sans,sans-serif",fontWeight:600}}>Enabled</span>
+              </div>
+              <button className="tap" onClick={disablePush} style={{padding:"5px 12px",background:"transparent",border:"1px solid #2A2A2A",borderRadius:8,color:"#555",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"DM Sans,sans-serif"}}>Disable</button>
+            </div>
+          ) : (
+            <>
+              <div style={{color:"#555",fontSize:11,fontFamily:"DM Sans,sans-serif",marginBottom:10,lineHeight:1.6}}>
+                Get notified even when the app is closed. Tap the button below — iOS will ask for permission.
+              </div>
+              <button className="tap" onClick={enablePush} disabled={pushSt==="subscribing"} style={{
+                width:"100%",padding:"12px",borderRadius:12,border:"none",cursor:"pointer",
+                background:pushSt==="subscribing"?"#1A1A1A":"rgba(124,106,247,0.18)",
+                color:pushSt==="subscribing"?"#333":"#A898FF",
+                fontSize:13,fontWeight:700,fontFamily:"Syne,sans-serif",letterSpacing:0.3,
+              }}>
+                {pushSt==="subscribing"?"Enabling…":"Enable Push Notifications"}
+              </button>
+              {pushSt==="denied" && (
+                <div style={{color:"#FF6060",fontSize:11,fontFamily:"DM Sans,sans-serif",marginTop:8,lineHeight:1.5}}>
+                  Permission denied. Go to device Settings → find this app → Notifications → Allow.
+                </div>
+              )}
+              {pushSt==="error" && (
+                <div style={{color:"#FF6060",fontSize:11,fontFamily:"DM Sans,sans-serif",marginTop:8}}>
+                  Something went wrong. Make sure the app is added to your home screen and try again.
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* ── Talk to Claude ── */}
